@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: env.BRANCH_NAME, url: 'https://github.com/your-username/your-repo.git'
+            }
+        }
+
+        stage('Build & Validate HTML') {
+            steps {
+                script {
+                    // Validate HTML using tidy-html5 (install on Jenkins server first)
+                    sh 'tidy -q -e index.html || true'
+                    // Or use npm html-validator if you prefer
+                    // sh 'npx html-validator --file=index.html'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                script {
+                    // Simple test - check file exists
+                    sh 'test -f index.html'
+
+                    // Optional: Add link checking if you have links
+                    // sh 'npx link-check index.html'
+
+                    // Optional: Add browser testing with tools like Selenium
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline completed'
+        }
+        failure {
+            echo 'Pipeline failed'
+        }
+    }
+}
