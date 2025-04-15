@@ -1,34 +1,50 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = "praveen689/intellipaat"
+        DOCKER_TAG = "latest"
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/Praveenkumar0308/website.git'
+                checkout scm
             }
         }
 
-        stage('Build & Validate HTML') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    // Validate HTML using tidy-html5 (install on Jenkins server first)
-                    sh 'tidy -q -e index.html || true'
-                    // Or use npm html-validator if you prefer
-                    // sh 'npx html-validator --file=index.html'
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
                 }
             }
         }
 
-        stage('Test') {
+        stage('Push Docker Image') {
             steps {
-                script {
-                    // Simple test - check file exists
-                    sh 'test -f index.html'
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    script {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        '''
+                    }
+                }
+            }
+        }
 
-                    // Optional: Add link checking if you have links
-                    // sh 'npx link-check index.html'
-
-                    // Optional: Add browser testing with tools like Selenium
+        stage('Run Ansible Playbook') {
+            when {
+                branch 'master'
+            }
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: 'prod-host-ssh', keyFileVariable: 'SSH_KEY')]) {
+                    script {
+                        sh '''
+                            ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml
+                        '''
+                    }
                 }
             }
         }
