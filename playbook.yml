@@ -37,7 +37,9 @@
         state: started
         enabled: yes
 
-    - name: Pull image
+    - name: Always pull the image
       docker_image:
         name: praveen689/intellipaat:latest
         source: pull
+        force_source: true
+
